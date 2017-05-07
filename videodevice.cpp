@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "videodevice.h"
 
 
@@ -29,7 +30,8 @@ int VideoDevice::open_device()
 //关闭视频设备
 int VideoDevice::close_device()
 {
-	if(-1 == close(fd))
+	int ret = close(fd);
+	if(-1 == ret)
 	{
 		emit display_error(tr("close: %1").arg(QString(strerror(errno))));
 		return -1;

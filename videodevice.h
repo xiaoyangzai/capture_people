@@ -53,4 +53,5 @@ signals:
 };
 
 
+
 #endif // VIDEODEVICE_H
