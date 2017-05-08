@@ -12,8 +12,8 @@ using namespace std;
 
 
 int detect_walker(Mat &image);
-//int detect_face(Mat image,const char *falter = "./data/haarcascades/haarcascade_frontalface_default.xml");
-int detect_face(Mat image,const char *falter = "./data/haarcascades/haarcascade_upperbody.xml");
+int detect_face(Mat image,const char *falter = "./data/haarcascades/haarcascade_frontalface_default.xml");
+//int detect_face(Mat image,const char *falter = "./data/haarcascades/haarcascade_upperbody.xml");
 void setCurrentVideoFileName(char *relust,int len);
 int end_write_video(CvVideoWriter *writer);
 int wirte_video(Mat &img,CvVideoWriter *writer);
