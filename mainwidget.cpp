@@ -19,10 +19,9 @@ MainWindow::MainWindow()
 
 	camlabel = new QLabel;
 	pexit = new QPushButton(QObject::tr("Quit"));
-	pcapture = new QPushButton(QObject::tr("Capture"));
 
 	pvbox = new QVBoxLayout;
-	camlabel->resize(240,180);
+	//camlabel->resize(320,240);
 	camlabel->setScaledContents(true);
 	pvbox->addWidget(camlabel);
 	pvbox->addWidget(pexit);
@@ -31,14 +30,8 @@ MainWindow::MainWindow()
 		
 	len = 0;
 	
-	video = new VideoDevice(QObject::tr("/dev/video0"));
-	QObject::connect(video,SIGNAL(display_error(QString)),this,SLOT(slot_display_error(QString)));
 	QObject::connect(pexit,SIGNAL(clicked()),this,SLOT(slot_exit()));
-	QObject::connect(pcapture,SIGNAL(clicked()),this,SLOT(slot_capture()));
 
-	video->open_device();
-	video->init_device();
-	video->start_capturing();
 	camtimer = new QTimer(this);
 	QObject::connect(camtimer,SIGNAL(timeout()),this,SLOT(update()));
 
@@ -52,16 +45,17 @@ MainWindow::MainWindow()
 	create_video_flag = false;
 	record_image_count = 0;
 	fps = 5;
-	video_size = CvSize(240,180);
+	video_size = CvSize(640,480);
 	QObject::connect(this,SIGNAL(signal_create_writer()),this,SLOT(slot_create_writer()));
 
 	camtimer->start(30);
 	qDebug()<<"init finish!\n"<<endl;
+	cam = cvCreateCameraCapture(0);
 	
 }
 void MainWindow::slot_create_writer()
 {
-	writer = new VideoWriter(videoname,CV_FOURCC('M', 'J', 'P', 'G'),fps,video_size); //创建视频文件  
+	writer = init_video_infomation(videoname,video_size,fps); //创建视频文件  
 	if(writer == NULL) 
 	{
 		cout<<"create video write failed"<<endl;		
@@ -70,25 +64,19 @@ void MainWindow::slot_create_writer()
 }
 void MainWindow::paintEvent(QPaintEvent *)
 {
-	qDebug()<<"get frame begine...."<<endl;
-    video->get_frame((void **)&p,&len);
-	qDebug()<<"get frame finish!"<<endl;
-    pp = p;
-	//detect the walk 
-#if 1
-	//create MAT with the data pointed by @p
-	Mat img(240,180,CV_8UC3,pp);
-	Mat source_image = img;
-	int walker_number = detect_walker(img);
+	IplImage *frame = cvQueryFrame(cam);//从摄像头或者文件中抓取并返回一帧  
+	Mat img = cvarrToMat(frame);
+	Mat temp_img;
+	int walker_number = detect_face(img);
+	cvtColor(img, temp_img, CV_BGR2RGB); 
 	if(walker_number > 0)
 	{
-		//show the image that labels the walked with the rectangle
-    	frame->loadFromData(img.data,240 * 180 * 3 * sizeof(char),"JPG");
-    	camlabel->setPixmap(QPixmap::fromImage(*frame,Qt::AutoColor));
+#if 1
 		if(create_video_flag == false)
 		{
+			cout<<"there have "<<walker_number<<"people under tht monitor"<<endl;
 			//set the number of images that will be saved into the video	
-			record_image_count = 20;
+			record_image_count = 50;
 			setCurrentVideoFileName(videoname,30);
 			cout<<"video will be saved in the "<<videoname<<endl;
 			emit signal_create_writer();
@@ -98,17 +86,14 @@ void MainWindow::paintEvent(QPaintEvent *)
 			struct tm* timeinfo;	
 			time(&rawtime);
 			timeinfo = localtime(&rawtime);
-			fprintf(log,"%s\n",asctime(timeinfo));
+			//set record the log
+			fprintf(log,"== %s == \t%d people are detected!!=================\n",asctime(timeinfo),walker_number);
 			//set record video flag
 			create_video_flag = true;
 		}
 	}
-	else
-	{
-		frame->loadFromData(source_image.data,240 * 180 * 3 * sizeof(char),"JPG");
-    	camlabel->setPixmap(QPixmap::fromImage(*frame,Qt::AutoColor));
-
-	}
+	QImage temp((const uchar*)temp_img.data, temp_img.cols,temp_img.rows,QImage::Format_RGB888);  
+	camlabel->setPixmap(QPixmap::fromImage(temp));
 
 	if(create_video_flag)
 	{
@@ -119,14 +104,17 @@ void MainWindow::paintEvent(QPaintEvent *)
 			create_video_flag = false;
 			record_image_count = 0;
 			end_write_video(writer);
+			cout<<"record video finished!!!!\n";
 		}
-		//record the video
-		wirte_video(img,writer);
+		else
+		{
+			//record the video
+			cout<<"record into the video....\n";
+			wirte_video(img,writer);
+		}
 	}
 
 #endif
-    video->unget_frame();    
-	qDebug()<<"unget frame finish!"<<endl;
 }
 void MainWindow::slot_display_error(QString text)
 {
@@ -136,15 +124,9 @@ void MainWindow::slot_display_error(QString text)
 
 void MainWindow::slot_exit()
 {
-	video->uninit_device();
-	video->close_device();
-	free(pp);
+	fclose(log);
+	cvReleaseCapture(&cam);
 	exit(0);
-}
-void MainWindow::slot_capture()
-{
- QString fileName = QFileDialog::getSaveFileName(this, tr("Save File"),"/home/jana/untitled.png",tr("Images (*.png *.jpg)"));	
-
 }
 
 

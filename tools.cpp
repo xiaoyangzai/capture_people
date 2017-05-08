@@ -17,24 +17,25 @@ void setCurrentVideoFileName(char *result,int len)
 	time(&rawtime);
 	timeinfo = localtime(&rawtime);
 	memset(result,0,len);
-	sprintf(result,"%d-%.2d-%.2d-%.2d-%.2d-%.2d.avi",1900+timeinfo->tm_year,timeinfo->tm_mon,timeinfo->tm_mday,timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
+	sprintf(result,"./video/%d-%.2d-%.2d-%.2d-%.2d-%.2d.avi",1900+timeinfo->tm_year,timeinfo->tm_mon,timeinfo->tm_mday,timeinfo->tm_hour,timeinfo->tm_min,timeinfo->tm_sec);
 	return ;
 }
-VideoWriter* init_video_infomation(const char *filename,CvSize size,double fps)
+CvVideoWriter* init_video_infomation(const char *filename,CvSize size,double fps)
 {
-	VideoWriter *writer = new VideoWriter(filename,CV_FOURCC('M', 'J', 'P', 'G'),fps,size); //创建视频文件  
+	CvVideoWriter *writer = cvCreateVideoWriter(filename,CV_FOURCC('M', 'J', 'P', 'G'),fps,size); //创建视频文件  
 	if(writer == NULL) 
 		cout<<"create video writer failed\n"		;
 	return writer;
 }
-int wirte_video( Mat &img,VideoWriter *writer)
+int wirte_video(Mat &img,CvVideoWriter *writer)
 {
-	writer->write(img); //保存图片为视频流格式  
+	IplImage pimg(img);
+	cvWriteFrame(writer,&pimg); //保存图片为视频流格式  
 	return 0;
 }
-int end_write_video(VideoWriter *writer)
+int end_write_video(CvVideoWriter *writer)
 {
-	writer->release();
+	cvReleaseVideoWriter(&writer);
 	return 0;
 }
 
@@ -56,18 +57,15 @@ int detect_face(Mat image,const char *falter)
 
 	vector <Rect> faces;
 	face_haar.detectMultiScale(image,faces);
-	cout<<"face count: "<<faces.size()<<endl;
+	//cout<<"face count: "<<faces.size()<<endl;
 	for(int i = 0;i < faces.size();i++)
 	{
 		rectangle(image,Point(faces[i].x,faces[i].y),Point(faces[i].x+faces[i].width,faces[i].y+faces[i].height),Scalar(0,255,0),2);
 	}
 
-	namedWindow( "Display Image", CV_WINDOW_AUTOSIZE );
-	imshow( "Display Image", image );
-	waitKey(0);
 	return faces.size();
 }
-int detect_walker(Mat image)
+int detect_walker(Mat &image)
 {
 	if(!image.data)
 	{
@@ -96,16 +94,13 @@ int detect_walker(Mat image)
 		}
 	}
 	
-	cout<<"face count: "<<foundRect.size()<<endl;
+	//cout<<"face count: "<<foundRect.size()<<endl;
 	for(int i = 0;i < foundRect.size();i++)
 	{
 		Rect r = foundRect[i];
 		rectangle(image,r.tl(),r.br(),Scalar(0,0,255),2);
 	}
 
-	namedWindow( "Display Image", CV_WINDOW_AUTOSIZE );
-	imshow( "Display Image", image );
-	waitKey(0);
 	return foundRect.size();
 }
 
