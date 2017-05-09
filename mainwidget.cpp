@@ -44,11 +44,11 @@ MainWindow::MainWindow()
 	}
 	create_video_flag = false;
 	record_image_count = 0;
-	fps = 5;
+	fps = 8;
 	video_size = CvSize(640,480);
 	QObject::connect(this,SIGNAL(signal_create_writer()),this,SLOT(slot_create_writer()));
 
-	camtimer->start(30);
+	camtimer->start(20);
 	qDebug()<<"init finish!\n"<<endl;
 	cam = cvCreateCameraCapture(0);
 	
@@ -67,8 +67,11 @@ void MainWindow::paintEvent(QPaintEvent *)
 	IplImage *frame = cvQueryFrame(cam);//从摄像头或者文件中抓取并返回一帧  
 	Mat img = cvarrToMat(frame);
 	Mat temp_img;
-	int walker_number = detect_face(img);
 	cvtColor(img, temp_img, CV_BGR2RGB); 
+	//cvtColor(img, img, CV_BGR2RGB); 
+	int walker_number = detect_face(temp_img);
+	walker_number = detect_face(img);
+	//int walker_number = detect_walker(img);
 	if(walker_number > 0)
 	{
 #if 1
@@ -76,7 +79,7 @@ void MainWindow::paintEvent(QPaintEvent *)
 		{
 			cout<<"there have "<<walker_number<<"people under tht monitor"<<endl;
 			//set the number of images that will be saved into the video	
-			record_image_count = 50;
+			record_image_count = 100;
 			setCurrentVideoFileName(videoname,30);
 			cout<<"video will be saved in the "<<videoname<<endl;
 			emit signal_create_writer();
@@ -87,7 +90,8 @@ void MainWindow::paintEvent(QPaintEvent *)
 			time(&rawtime);
 			timeinfo = localtime(&rawtime);
 			//set record the log
-			fprintf(log,"== %s == \t%d people are detected!!=================\n",asctime(timeinfo),walker_number);
+			fprintf(log,"== %s\t%d people are detected! The video is stored in the %s\n",asctime(timeinfo),walker_number,videoname);
+			cout<<"record into the video....\n";
 			//set record video flag
 			create_video_flag = true;
 		}
@@ -109,7 +113,6 @@ void MainWindow::paintEvent(QPaintEvent *)
 		else
 		{
 			//record the video
-			cout<<"record into the video....\n";
 			wirte_video(img,writer);
 		}
 	}
